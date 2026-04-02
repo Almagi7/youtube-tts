@@ -1,0 +1,43 @@
+{
+  "name": "YoutubeChatBot",
+  "version": "1.0.0",
+  "description": "YouTube Live Chat TTS Bot",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder"
+  },
+  "author": "Alma 💜",
+  "license": "ISC",
+  "type": "commonjs",
+
+  "dependencies": {
+    "dotenv": "^17.4.0",
+    "express": "^5.2.1",
+    "googleapis": "^171.4.0",
+    "say": "^0.16.0",
+    "ws": "^8.20.0"
+  },
+
+  "devDependencies": {
+    "electron": "^41.1.1",
+    "electron-builder": "^24.13.3"
+  },
+
+  "build": {
+    "appId": "com.youtube.tts",
+    "productName": "YouTube TTS",
+    
+    "files": [
+      "**/*"
+    ],
+
+    "win": {
+      "target": "nsis"
+    },
+
+    "mac": {
+      "target": "dmg"
+    }
+  }
+}

@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>YouTube TTS Panel</title>
+
+<style>
+body {
+    margin: 0;
+    font-family: 'Segoe UI', sans-serif;
+    background: radial-gradient(circle at top, #1a0f2e, #090510);
+    color: white;
+    display: flex;
+    height: 100vh;
+}
+
+/* PANEL IZQUIERDO */
+.panel {
+    width: 300px;
+    padding: 25px;
+    background: rgba(20,10,40,0.9);
+    backdrop-filter: blur(15px);
+    box-shadow: 0 0 40px rgba(168,85,247,0.2);
+    display: flex;
+    flex-direction: column;
+}
+
+/* TITLE */
+h1 {
+    font-size: 18px;
+    margin-bottom: 15px;
+    color: #e9d5ff;
+}
+
+/* INPUT */
+input {
+    padding: 10px;
+    border-radius: 8px;
+    border: 1px solid rgba(168,85,247,0.3);
+    background: rgba(255,255,255,0.05);
+    color: white;
+    margin-bottom: 10px;
+    font-size: 13px;
+}
+
+/* BOTONES MÁS PEQUEÑOS */
+button {
+    padding: 8px;
+    border-radius: 8px;
+    border: none;
+    margin-top: 6px;
+    cursor: pointer;
+    font-size: 13px;
+}
+
+.start {
+    background: #a855f7;
+    color: white;
+}
+
+.stop {
+    background: #ef4444;
+    color: white;
+}
+
+/* STATUS */
+.status {
+    margin-top: 12px;
+    font-size: 12px;
+    opacity: 0.7;
+}
+
+/* CHAT CONTENEDOR */
+.chat {
+    width: 450px; /* 👈 ancho controlado */
+    padding: 15px;
+    overflow-y: auto;
+}
+
+/* MENSAJES MÁS COMPACTOS */
+.message {
+    margin-bottom: 6px;
+    padding: 6px 8px;
+    border-radius: 8px;
+    background: rgba(255,255,255,0.05);
+    font-size: 12px;
+    line-height: 1.2;
+}
+
+/* USER */
+.user {
+    font-weight: 600;
+    color: #c084fc;
+    font-size: 12px;
+}
+</style>
+</head>
+
+<body>
+
+<div class="panel">
+
+    <h1>🎙️ YouTube TTS</h1>
+
+    <input id="url" placeholder="Pega el link del live...">
+
+    <button class="start" onclick="startBot()">Conectar</button>
+    <button class="stop" onclick="stopBot()">Detener</button>
+
+    <div class="status" id="status">
+        Estado: Desconectado
+    </div>
+
+</div>
+
+<div class="chat" id="chat"></div>
+
+<script>
+const statusEl = document.getElementById("status");
+const chatEl = document.getElementById("chat");
+
+/* WEBSOCKET */
+const ws = new WebSocket("ws://localhost:4001");
+
+ws.onopen = () => {
+    console.log("🟢 WS conectado");
+};
+
+ws.onmessage = (event) => {
+    const data = JSON.parse(event.data);
+    addMessage(data.user, data.text);
+};
+
+/* START */
+async function startBot() {
+    const url = document.getElementById("url").value;
+
+    if (!url) {
+        alert("Pon un link");
+        return;
+    }
+
+    statusEl.innerText = "Conectando...";
+
+    try {
+        const res = await fetch(`http://localhost:4000/start?url=${encodeURIComponent(url)}`);
+        const data = await res.json();
+
+        if (data.success) {
+            statusEl.innerText = "🟢 Conectado";
+            chatEl.innerHTML = "";
+        } else {
+            statusEl.innerText = "❌ Error";
+        }
+
+    } catch (err) {
+        statusEl.innerText = "";
+    }
+}
+
+/* STOP */
+async function stopBot() {
+    await fetch("http://localhost:4000/stop");
+    statusEl.innerText = "🔴 Detenido";
+}
+
+/* CHAT UI */
+function addMessage(user, text) {
+    const div = document.createElement("div");
+    div.className = "message";
+
+    div.innerHTML = `<span class="user">${user}</span>: ${text}`;
+
+    chatEl.appendChild(div);
+    chatEl.scrollTop = chatEl.scrollHeight;
+}
+</script>
+
+</body>
+</html>
