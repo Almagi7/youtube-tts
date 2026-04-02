@@ -1,0 +1,30 @@
+name: Build Electron App
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Descargar código
+        uses: actions/checkout@v3
+
+      - name: Instalar Node
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+
+      - name: Instalar dependencias
+        run: npm install
+
+      - name: Construir app (.exe)
+        run: npm run build
+
+      - name: Subir archivo
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-build
+          path: dist/
