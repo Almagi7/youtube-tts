@@ -38,12 +38,12 @@ const youtube = google.youtube({
    ESTADO GLOBAL DEL BOT
 ========================= */
 
-let currentInterval = null;
 let mensajesLeidos = new Set();
 let inicializado = false;
 let queue = [];
 let speaking = false;
-let active = true;
+let session = 0; // cada start/stop crea una sesión nueva; los loops viejos se descartan solos
+let pollTimer = null;
 let clients = new Set();
 
 
@@ -97,7 +97,9 @@ function processQueue() {
 ========================= */
 
 function stopBot() {
-  active = false; // 🔥 esto mata el loop
+  session++; // 🔥 invalida cualquier loop anterior
+  clearTimeout(pollTimer);
+  pollTimer = null;
 
   mensajesLeidos.clear();
   inicializado = false;
@@ -110,12 +112,11 @@ function stopBot() {
    LEER CHAT
 ========================= */
 
-async function readChat(liveChatId) {
+async function readChat(liveChatId, mySession) {
   let nextPageToken = null;
-  active = true;
 
   async function poll() {
-    if (!active) return; // 🔥 detener loop
+    if (mySession !== session) return; // 🔥 sesión vieja: detener loop
 
     try {
       const res = await youtube.liveChatMessages.list({
@@ -123,6 +124,9 @@ async function readChat(liveChatId) {
         part: "snippet,authorDetails",
         pageToken: nextPageToken
       });
+
+      // la sesión pudo cambiar mientras esperábamos la respuesta
+      if (mySession !== session) return;
 
       nextPageToken = res.data.nextPageToken;
 
@@ -165,11 +169,12 @@ async function readChat(liveChatId) {
 
       const wait = res.data.pollingIntervalMillis || 2000;
 
-      setTimeout(poll, wait);
+      pollTimer = setTimeout(poll, wait);
 
     } catch (err) {
+      if (mySession !== session) return;
       console.log("Error:", err.message);
-      setTimeout(poll, 5000);
+      pollTimer = setTimeout(poll, 5000);
     }
   }
 
@@ -196,12 +201,18 @@ app.get("/start", async (req, res) => {
 
     // 🔥 detener bot anterior
     stopBot();
+    const mySession = session;
 
     const chatId = await getLiveChatId(videoId);
 
+    // otro /start o /stop llegó mientras buscábamos el chat
+    if (mySession !== session) {
+      return res.status(409).json({ error: "El bot se reinició o detuvo mientras tanto" });
+    }
+
     console.log("🎯 Nuevo live:", videoId);
 
-    readChat(chatId);
+    readChat(chatId, mySession);
 
     res.json({ success: true });
 
