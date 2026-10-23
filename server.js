@@ -76,6 +76,18 @@ async function getLiveChatId(videoId) {
 }
 
 /* =========================
+   PANEL (WS)
+========================= */
+
+function broadcast(data) {
+  clients.forEach(client => {
+    if (client.readyState === 1) {
+      client.send(JSON.stringify(data));
+    }
+  });
+}
+
+/* =========================
    VOZ
 ========================= */
 
@@ -130,27 +142,27 @@ async function readChat(liveChatId, mySession) {
 
       nextPageToken = res.data.nextPageToken;
 
-      res.data.items.forEach(msg => {
-        const id = msg.id;
+      const wait = res.data.pollingIntervalMillis || 2000;
 
-        if (mensajesLeidos.has(id)) return;
-        mensajesLeidos.add(id);
+      const nuevos = res.data.items.filter(msg => {
+        if (mensajesLeidos.has(msg.id)) return false;
+        mensajesLeidos.add(msg.id);
+        return inicializado;
+      });
 
-        if (!inicializado) return;
+      // repartir la tanda a lo largo del intervalo para que el panel no muestre todo de golpe
+      const gap = wait / nuevos.length;
 
+      nuevos.forEach((msg, i) => {
         const text = msg.snippet.displayMessage;
         const user = msg.authorDetails.displayName;
 
         console.log(`${user}: ${text}`);
-        
-        clients.forEach(client => {
-          if (client.readyState === 1) {
-            client.send(JSON.stringify({
-              user,
-              text
-            }));
-          }
-        });
+
+        setTimeout(() => {
+          if (mySession !== session) return;
+          broadcast({ user, text });
+        }, i * gap);
 
         if (!text) return;
 
@@ -166,8 +178,6 @@ async function readChat(liveChatId, mySession) {
         inicializado = true;
         console.log("🟡 Bot listo, ahora solo leerá mensajes nuevos...");
       }
-
-      const wait = res.data.pollingIntervalMillis || 2000;
 
       pollTimer = setTimeout(poll, wait);
 
