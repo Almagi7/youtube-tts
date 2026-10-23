@@ -1,3 +1,6 @@
+const path = require("path");
+require("dotenv").config({ path: path.join(__dirname, ".env"), quiet: true });
+
 const express = require("express");
 const { google } = require("googleapis");
 const say = require("say");
@@ -20,7 +23,11 @@ console.log("🟣 WS en ws://localhost:4001");
    CONFIG
 ========================= */
 
-const API_KEY = "AIzaSyAU0vJXcrqRl0nfHbXP747zQKVCeg2_8Kg";
+const API_KEY = process.env.YOUTUBE_API_KEY;
+
+if (!API_KEY) {
+  console.error("⚠️ Falta YOUTUBE_API_KEY (definila en .env)");
+}
 
 const youtube = google.youtube({
   version: "v3",
@@ -181,6 +188,10 @@ app.get("/start", async (req, res) => {
 
     if (!videoId) {
       return res.status(400).json({ error: "URL inválida" });
+    }
+
+    if (!API_KEY) {
+      return res.status(500).json({ error: "Falta YOUTUBE_API_KEY en .env" });
     }
 
     // 🔥 detener bot anterior
